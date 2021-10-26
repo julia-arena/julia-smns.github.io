@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <style>
+        body{
+        background-color:#585858;
+        margin: 0;	
+        padding:0px;
+        font-family: Verdana, Geneva, Tahoma, sans-serif;
+    }
+
+    /* ------ Overall DIV for better positioning possibilities of all contained DIV's ------- */	
+    #overalldiv{
+        /* -- DIV positioning and size--*/
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        right: 0px;
+        height: 100%;
+    }
+
+    /* ------ Website header (not html-file-header!) ------- */	
+    div#header{
+        background-color: #585858;
+
+        /* -- DIV positioning and size --*/
+        position: absolute;
+        top: 0%;
+        height: 50px;
+        width: 100%;
+
+        /* -- Text styles --*/
+        font-size: 20px;
+        font-weight: bold;
+        padding:8px;
+        color: white;
+        text-align:left;
+        text-shadow: 1px 1px 2px #000000;
+    }
+
+
+    /* ------ Website map ------- */	
+    div#map{
+        background-color: lightblue;
+
+        /* -- DIV positioning and size --*/
+        position: static;
+        height: 95%;
+        width: 100%;
+        padding-top: 50px;
+        }
+
+    /* ------ Website footer ------- */	
+    div#footer{
+        background-color: #585858;
+
+        /* -- DIV positioning and size--*/
+        position: absolute;
+        top: 95%;
+        height: 5%;
+        width: 100%;
+
+        /* -- Text styles -- */
+        font-size: 25px;
+        font-weight: bold;
+        color: white;
+        text-align: left;
+        font-size: 10px;
+        }
+
+    /* Impressum Style */	
+    div#imprint {
+        font-size: 10px;
+        color: #F6F2E5;
+        width: 100%;
+    }
+
+    /* Logo Style (position) */	
+    div#logo{
+        float: right;
+    }
+
+    /* ------ Status quo: shows which base and target currencies are selected ------- */	
+    div#status_quo{
+        background-color: #E0F2F7;
+
+        /* -- DIV positioning and size--*/
+        width: 20%;
+        position: absolute;
+        bottom: 5%;
+        right: 12%;
+        z-index:1;
+
+        /* -- Text styles -- */
+        padding: 6px;
+        text-align:center;
+        font-size: 12px;
+    }
+    /* status quo currency text highlight */
+    p{
+        color: #008080;
+        text-align: center;
+        display:inline;
+    }
+
+    /* ------ Currency Choice Window ------- */	
+    div#currency_choice{
+        background-color: #E0F2F7;
+
+        /* -- DIV positioning and size--*/
+        position: absolute;
+        right:50px;
+        width: 25%;
+        z-index:1;
+
+        /* Text styles */	
+        padding: 6px;
+        text-align:center;
+        font-size: 12px;	
+    }
+
+    /* dropdown menu style */
+    #currency_base{
+        min-width: 50px;
+        width: 80%;
+    }	 
+    /* ------------------ Popup (OpenLayers-own classes and IDs) ----------------- */
+    /* -- popup styles -- */
+    .ol-popup {
+        color: #cccccc;
+        text-shadow: 1px 1px 2px #000000;
+        background-color: #585858;
+        position: absolute;
+        -webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+        filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #cccccc;
+        bottom: 12px;
+        left: -50px;
+        min-width: 280px;
+        }
+    /* -- popup styles for before and after popup calling by click event-- */
+    .ol-popup:after, .ol-popup:before {
+        top: 100%;
+        border: solid transparent;
+        content: " ";
+        height: 0;
+        width: 0;
+        position: absolute;
+        pointer-events: none;
+        }
+    .ol-popup:after {
+        border-top-color: #585858;
+        border-width: 10px;
+        left: 48px;
+        margin-left: -10px;
+        }
+    .ol-popup:before {
+        border-top-color: #cccccc;
+        border-width: 11px;
+        left: 48px;
+        margin-left: -11px;
+        }
+
+    /* -- popup styles for the closing button (X) -- */
+    .ol-popup-closer {
+        text-decoration: none;
+        position: absolute;
+        top: 2px;
+        right: 8px;
+        }
+    .ol-popup-closer:after {
+        content: "X";
+        }
+
+    /* Country  */
+    div#cntry{
+        font-size: 20px;
+        color: white;
+    }
+
+
+    </style>
+    
+    
+    
+    
+	<meta charset="UTF-8">
+	<link rel="stylesheet" type="text/css" href="style.css"> <!-- Refer to Stylesheet -->
+	<link rel="stylesheet" href="https://openlayers.org/en/v5.3.0/css/ol.css" type="text/css">
+    <script src="https://openlayers.org/en/v5.3.0/build/ol.js" type="text/javascript"></script>
+	<script src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+
+
+	<title>World Currency Map</title>
+
+	<script>
+		//------------ global variables declaration ----------------------------
+		var map;						//basemap
+		var base;						//the currency exchange "from" 
+		var wanted;						//the currency exchange "to"
+		var todaysRate;					//exchange rate from base to wanted
+		var historicRates;				//variable with values from the past month
+		var historicRates_max;			//max. of the past month (highest rate)
+		var historicRates_min;			//min. of the past month (lowest rate)
+
+
+
+		// main function, that includes all JS functions
+		function my_onload() {
+
+			//--------------------------------------- map ---------------------------------
+			
+			//stylefunction
+			var styleFunction = function(feature) {
+			      var rgba = 'rgba(0, 102, 102, 0.8)';
+				  var countrystyle;
+			      if ((feature.get("CURRENCY")).length > 1){
+			      		countrystyle =   new ol.style.Style({
+				          	fill: new ol.style.Fill({ 
+				            	 color: 'rgba(100, 200, 140, 0.2)'
+				          	}),
+					      	stroke: new ol.style.Stroke({ 
+					             color: rgba,
+					             width: 1
+					        })
+				        });
+			       		return countrystyle;
+			      } else {
+			    	  	countrystyle = new ol.style.Style({
+				    	  	stroke: new ol.style.Stroke({ 
+					             color: rgba,
+					             width: 1
+					           })
+			    	  	})
+			    		return countrystyle;
+			      }
+		    }
+			
+			// baselayer	
+			var osm = new ol.layer.Tile({
+				source: new ol.source.OSM()
+			});
+			
+		      
+			// world boundaries with country and currency information as geojson
+			var country = new ol.layer.Vector({
+				source: new ol.source.Vector({
+					url: 'https://powergis.gistemp.com/geoserver/ePortfolio/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=ePortfolio%3AWorld&maxFeatures=500&outputFormat=application%2Fjson',
+					format: new ol.format.GeoJSON()
+				}),
+				style: styleFunction
+			});
+			
+			
+			
+			//create map with osm tile layer and world boundaries vector
+			map = new ol.Map({
+				target: 'map',
+				layers:
+					[osm, country],
+				view: new ol.View({
+					center: [0, 0],
+					zoom: 3
+				}),
+			});
+
+			//------------------------------- create drop down menu -----------------------------
+
+			//variable to fill dropdown menu "currency_base" from HTML section
+			var baseArray = document.getElementById("currency_base"); 				
+			var abbreviation = ["EUR", "USD", "HUF", "CAD", "HKD", "ISK", "PHP", "DKK", "CZK", "AUD", "RON", "SEK", "IDR",
+				"INR", "BRL", "RUB", "HRK", "JPY", "THB", "CHF", "SGD", "PLN", "BGN", "TRY", "CNY", "NOK",
+				"NZD", "ZAR", "MXN", "ILS", "GBP", "KRW", "MYR"];
+			var texting = ["Euro", "US Dollar", "Hungarian Forint", "Canadian Dollar", "Hongkong Dollar", "Islandic Krona",
+				"Phillipine Peso", "Danish Krone", "Czech Koruna", "Australian Dollar", "Romanian New Lei",
+				"Swedish Krona", "Indonesian Rupiah", "Indian Rupee", "Brazilian Real", "Russian Rouble",
+				"Croatian Kuna", "Japanese Yen", "THai Baht", "Swiss Francs", "Singapore Dollar", "Polish Zloty",
+				"Bulgarian Lev", "Turkish Lira", "Chinese Yuan Renminbi", "Norwegian Kroner", "New Zealand Dollar",
+				"South African Rand", "Mexican Peso", "Israeli New Shekel", "British Pound",
+				"South Korean Won", "Malaysian Ringgit"];
+			
+			//filling the tag structure <select value=abbreviation[]>texting[]</select> for each element
+			for (var i = 0; i < abbreviation.length; i++) {				
+				var options = abbreviation[i];
+				var content = texting[i];
+				var tag = document.createElement("option");
+				tag.text = content;
+				tag.value = options;
+				baseArray.add(tag);
+			}
+	
+			var base_sel = document.getElementById("currency_base");
+
+
+			//-------------------------------- checkbox handling-----------------	
+
+			//rates from each day in the past month take longer to load due to synchron request therefore only included if checkbox checked
+			var checkbox = document.getElementById("checkbox");
+			var checkboxStatus = false;
+
+			//when checkbox checked status = true, if not false
+			checkbox.onclick = function timealert() {
+				if (checkbox.checked == true) {
+					alert("Including historic rates might take a few seconds longer!");
+					checkboxStatus = true;
+				} else {
+					checkboxStatus = false;
+				}
+			}
+
+
+			//--------------------------------------- Start Popup ----------------------------------
+			var container = document.getElementById('popup');
+			var content_element = document.getElementById('popup-content');
+			var closer = document.getElementById('popup-closer');
+
+			// overlay: the popups place to appear
+			var overlay = new ol.Overlay({
+				element: container,
+				autoPan: true,
+				offset: [0, -10]
+			});
+
+			// adds the defined overlay to the map
+			map.addOverlay(overlay);
+
+			// closing function of the popup   
+			closer.onclick = function () {
+				overlay.setPosition(undefined);
+				closer.blur();
+				return false;
+			};
+			
+			
+			//event: click on a country on the map
+			map.on('click', function (e) {
+
+				var clickfeature = map.forEachFeatureAtPixel(e.pixel,
+					function (clickfeature, layer) {
+						return clickfeature;
+					});
+
+				//console.log(clickfeature);
+				if (clickfeature) {
+					var geometry = clickfeature.getGeometry();
+					var coord = e.coordinate;
+					overlay.setPosition(coord);
+					
+		
+				// ---------- HTTP Request for current exchange rate --------------------	
+
+					//base defined by dropdown selection
+					base = base_sel.options[base_sel.selectedIndex].value;
+					
+					//wanted defined by clicked country
+					wanted = clickfeature.get('CURRENCY')
+					
+					//prints the abbreviations to status_quo div
+					document.getElementById('wanted').innerHTML = wanted;
+					document.getElementById('base').innerHTML = base;
+					
+					var json;
+					var todaysRate = [];
+
+					//http request jQuery from URL, JSON returned with rate from today
+					$.ajax({
+						url: 'http://api.exchangeratesapi.io/latest?&access_key=ec190e4c95c7a4855bc4519118bdbd7e&symbols=' +
+							wanted + '&base=' + base,
+						type: "GET",
+						datatype: 'json',
+						success: function (json) {
+							todaysRate.push(json.rates[wanted]);
+							
+							// Popup content
+							var country_name = '<div id="cntry">' + clickfeature.get('NAME') + '</div>';
+							var cur_rate = '<div id="popcont">current rate: ' + todaysRate + " ";
+							var cur = clickfeature.get('CURRENCY') + '<br>';
+							var arrow_up = '<img src="https://arena.maps.arcgis.com/sharing/rest/content/items/ea2b615a737b4bf9b16f0b3c21b3f92b/data">';
+							var max_month = historicRates_max + ' (maximum of last month)<br>';
+							var arrow_down = '<img src="https://arena.maps.arcgis.com/sharing/rest/content/items/b196dbee2647416ab3fa8d22b0b9bccd/data">';
+							var min_month = historicRates_min + ' (minimum of last month) </div>';
+							var content = country_name + cur_rate + cur + arrow_up + max_month + arrow_down + min_month;
+
+							// recognise the content variable's content as HTML code
+							content_element.innerHTML = content;	
+						}
+					}).responseText;
+
+					
+					//if checkbox checked, also values from past month requested and min / max calculated
+					if (checkboxStatus == true) {
+						historicRates = gethistoricRates();
+						historicRates_max = Math.max.apply(null, historicRates);
+						historicRates_min = Math.min.apply(null, historicRates);
+					} else {
+						historicRates_max = "  --  ";
+						historicRates_min = "  --  ";
+					}
+				}
+			});
+
+			// --------------------------------------- add scalebar --------------------------------
+			var scalebar = new ol.control.ScaleLine({
+				minWidth: 50   				
+			});
+			map.addControl(scalebar);
+
+			// --------------------------------------- add fullscreen button -----------------------
+			var fullscreen = new ol.control.FullScreen();
+			map.addControl(fullscreen);
+
+			// ------------- date array ranging from today to 1 month back -------------------------
+			var today = new Date();
+			//Month +1 because function returns January as 0 otherwise
+			var newDate = new Date(today.getFullYear() + "-" + (today.getMonth() + 1) 
+				+ "-" + (today.getDate()-1));
+			var oldDate = new Date(today.getFullYear() + "-" + (today.getMonth())
+				+ "-" + today.getDate());
+			var dateArray = [];
+
+			//create date array of every day from today to 1 month back as string
+			function getDate() {
+				var dateX = new Date(oldDate);
+
+				while (dateX <= newDate) {
+
+					dateX = new Date(dateX.setDate(dateX.getDate() + 1));
+					dateX = new Date(dateX.getFullYear() + "-" + (dateX.getMonth() + 1) + "-" + dateX.getDate());
+					dateArray.push(dateX.toISOString().substring(0, 10));
+				}
+				return dateArray;
+			}
+
+			
+			//------------ get historic rates from the past 365 days --------------
+			var base_sel = document.getElementById("currency_base");
+
+			function gethistoricRates() {
+
+				var dates = getDate();
+				var historic_json = [];
+				var hJSONarray = [];
+				
+				//get rates from past month from base to wanted currency 
+				base = base_sel.options[base_sel.selectedIndex].value;
+
+				//calculate rate from every day in the past month, return array, only possible as synchrone approach
+				for (var i = 0; i < dates.length; i++) {
+					$.ajax({
+						url: 'http://api.exchangeratesapi.io/' + dates[i] + '?&access_key=ec190e4c95c7a4855bc4519118bdbd7e' +
+							'&symbols=' + wanted + '&base=' + base,
+						dataType: 'json',
+						async: false,
+						success: function (e) {
+                            console.log(e)
+							hJSONarray[i] = (e.rates[wanted]);
+						}
+					}).responseText;
+				}
+                console.log("hjson:",hJSONarray)
+				return hJSONarray;
+			};
+	}
+
+	</script>
+</head>
+
+
+<body onload="my_onload()"> <!-- body starts the main function my_onload out of JavaScript -->
+	<div id="overalldiv"> <!-- Overall DIV for better positioning possibilities of all contained DIV's -->
+		<div id="header">WORLD CURRENCY MAP</div>
+
+		<!-- div container for map content -->
+		<div id="map" class="map">
+
+			<!-- Currency Choice -->
+			<div id="currency_choice">
+				<div><b>Base Currency: </b><select id="currency_base"></select></div>
+				<form autocomplete="off">
+					<label for="checkbox"><br>
+						Include min / max values for the past month: </label>
+					<input type="checkbox" id="checkbox">
+				</form>
+                
+			</div>
+
+			<!-- Currency calculation status -->
+			<div id="status_quo">
+				Rates are calculated from
+				<p id="base"></p> to
+				<p id="wanted"></p>.
+			</div>
+
+		</div> <!-- map close -->
+		
+		<!-- Footer -->
+		<div id="footer">
+			<div id="imprint">Authors: Franziska Fürbacher, Julia Siemens 
+				<div id="logo"><img src="https://arena.maps.arcgis.com/sharing/rest/content/items/d146d66f049c46a88409f855a74cde99/data" alt="University Logo" ></div>
+			</div> <!-- impressum close -->
+		</div> 
+
+		<!-- Popup -->
+		<div id="popup" class="ol-popup">
+			<a href="#" id="popup-closer" class="ol-popup-closer"></a>
+			<div id="popup-content"></div>
+		</div>
+
+	</div> <!-- overall close -->
+</body>
+
+</html>
